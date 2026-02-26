@@ -1,0 +1,22 @@
+# ──────────────────────────────────────────────
+# EKAP Anomaly Detection – Production Overrides
+# ──────────────────────────────────────────────
+general:
+  env: "prod"
+  log_level: "WARNING"
+
+layer1:
+  hot_threshold: 0.75
+
+scoring:
+  segment_quantile: 0.999
+  topk_daily: 500
+  topk_critical: 100
+
+api:
+  workers: 4
+
+privacy:
+  anonymize_ip: true
+  hash_cookie: true
+  redact_query_values: true

@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ekap-anom"
+version = "0.1.0"
+description = "Multi-layer anomaly detection for EKAP IIS W3C logs"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "EKAP Security Team"}]
+readme = "README.md"
+
+dependencies = [
+    "pandas>=2.1",
+    "pyarrow>=14",
+    "scikit-learn>=1.3",
+    "torch>=2.1",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "pyyaml>=6",
+    "fastapi>=0.104",
+    "uvicorn[standard]>=0.24",
+    "mlflow>=2.9",
+    "prometheus-client>=0.19",
+    "ua-parser>=0.18",
+    "click>=8.1",
+    "structlog>=23.2",
+    "mmh3>=4",
+    "httpx>=0.25",
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4,<9",
+    "pytest-asyncio>=0.23,<1",
+    "pytest-cov>=4,<6",
+    "httpx>=0.25,<1",
+    "ruff>=0.1,<1",
+    "mypy>=1.7,<2",
+]
+
+[project.scripts]
+ekap-anom = "ekap_anom.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

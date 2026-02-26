@@ -1,0 +1,287 @@
+Metadata-Version: 2.4
+Name: ekap-anom
+Version: 0.1.0
+Summary: Multi-layer anomaly detection for EKAP IIS W3C logs
+Author: EKAP Security Team
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=2.1
+Requires-Dist: pyarrow>=14
+Requires-Dist: scikit-learn>=1.3
+Requires-Dist: torch>=2.1
+Requires-Dist: pydantic>=2.5
+Requires-Dist: pydantic-settings>=2.1
+Requires-Dist: pyyaml>=6
+Requires-Dist: fastapi>=0.104
+Requires-Dist: uvicorn[standard]>=0.24
+Requires-Dist: mlflow>=2.9
+Requires-Dist: prometheus-client>=0.19
+Requires-Dist: ua-parser>=0.18
+Requires-Dist: click>=8.1
+Requires-Dist: structlog>=23.2
+Requires-Dist: mmh3>=4
+Requires-Dist: httpx>=0.25
+Requires-Dist: numpy>=1.26
+Requires-Dist: scipy>=1.11
+Provides-Extra: dev
+Requires-Dist: pytest<9,>=7.4; extra == "dev"
+Requires-Dist: pytest-asyncio<1,>=0.23; extra == "dev"
+Requires-Dist: pytest-cov<6,>=4; extra == "dev"
+Requires-Dist: httpx<1,>=0.25; extra == "dev"
+Requires-Dist: ruff<1,>=0.1; extra == "dev"
+Requires-Dist: mypy<2,>=1.7; extra == "dev"
+
+# EKAP Multi-Layer Anomaly Detection System
+
+> Dynamic endpoint-focused (aspx/ashx) hierarchical anomaly detection for EKAP IIS W3C logs.
+> Batch training + near-real-time inference · No WAF/SIEM dependency · Segment-based thresholds
+
+---
+
+## Architecture
+
+```mermaid
+graph TD
+    subgraph "DATA LAYER"
+        A["IIS W3C Logs<br/>.log / .gz"] --> B["Parser<br/>Dynamic #Fields: mapping"]
+        B --> C["Validator<br/>Quality checks"]
+        C --> D["Dynamic Filter<br/>.aspx / .ashx only"]
+    end
+
+    subgraph "FEATURE LAYER"
+        D --> E["Layer 0<br/>URL Normalize · UA Parse<br/>Segment ID · Missing Indicators"]
+        E --> F["Layer 1 Features<br/>5-min Window Aggregation<br/>Counts · Rates · Latency · Burstiness"]
+        E --> G["Layer 2 Features<br/>Request-Level<br/>IP Stats · Path Hash · Query Hash · Perf"]
+        E --> H["Layer 3 Features<br/>Session Sequences<br/>Critical Endpoint Flows"]
+    end
+
+    subgraph "MODEL LAYER"
+        F --> I["Layer 1 Model<br/>Rolling Median + MAD<br/>Robust Z-Score"]
+        I -->|"window_is_hot"| J["Gating<br/>Hot Windows + Critical EPs"]
+        J --> G
+        G --> K["Layer 2 Model<br/>A: Segment IForest<br/>B: Denoising AE → Latent IF"]
+        H --> L["Layer 3 Model<br/>Markov Transition Score"]
+    end
+
+    subgraph "SCORING LAYER"
+        I --> M["Score Combiner<br/>Weighted Fusion"]
+        K --> M
+        L --> M
+        M --> N["Segment Thresholds<br/>Quantile / EVT per Segment"]
+        N --> O["Explain<br/>Reason Codes"]
+        O --> P["Alert Producer<br/>Top-K Daily + Critical Quota"]
+    end
+
+    subgraph "OPS LAYER"
+        P --> Q["Alerts<br/>JSONL + Parquet"]
+        M --> R["Drift Monitor<br/>PSI · JSD · Score Shift"]
+        R --> S["Retrain Trigger<br/>MLflow Registry"]
+        M --> T["FastAPI<br/>/score · /health · /metrics"]
+        T --> U["Prometheus"]
+    end
+```
+
+## Quick Start
+
+### Install
+```bash
+pip install -e ".[dev]"
+```
+
+### End-to-End Pipeline
+```bash
+# 1. Parse IIS logs
+ekap-anom parse --input /path/to/logs/ --out data/parsed
+
+# 2. Filter dynamic pages only
+ekap-anom filter-dynamic --in data/parsed --out data/dynamic_only
+
+# 3. Layer 1: Window features + scoring
+ekap-anom featurize-layer1 --in data/dynamic_only --out data/features/layer1
+ekap-anom infer-layer1 --in data/features/layer1 --out data/features/layer1
+
+# 4. Layer 2: Request features + training
+ekap-anom featurize-layer2 --in data/dynamic_only --layer1-dir data/features/layer1 --out data/features/layer2
+ekap-anom train-layer2 --in data/features/layer2 --mode iforest --model-out models/layer2_iforest.pkl
+
+# 5. Generate alerts
+ekap-anom score --date 2024-04-22 --out data/alerts
+
+# 6. Serve API
+ekap-anom serve --host 0.0.0.0 --port 8000
+```
+
+### Docker
+```bash
+cd docker
+docker-compose up -d
+```
+
+### Run Tests
+```bash
+pytest tests/ -v
+```
+
+## Project Structure
+
+```
+repo/
+├── pyproject.toml                 # Project config, dependencies, CLI entry
+├── README.md
+├── configs/
+│   ├── default.yaml               # All tunable parameters
+│   └── prod.yaml                  # Production overrides
+├── src/ekap_anom/
+│   ├── __init__.py
+│   ├── cli.py                     # Click CLI (parse, filter, featurize, train, infer, score, serve)
+│   ├── config.py                  # Pydantic Settings (YAML + env vars)
+│   ├── logging.py                 # Structured JSON logging (structlog)
+│   ├── utils/
+│   │   ├── hashing.py             # MurmurHash feature hashing (fixed-dim vectors)
+│   │   ├── time.py                # UTC parse, window bucketing
+│   │   ├── url.py                 # URL normalize, path template, query parse
+│   │   ├── ua.py                  # User-Agent parse, bot detection, novelty
+│   │   └── segment.py             # Segment ID generation
+│   ├── ingest/
+│   │   ├── reader.py              # Streaming line reader (.log/.gz)
+│   │   ├── parser.py              # W3C parser (dynamic #Fields:, chunked Parquet out)
+│   │   ├── schema.py              # IIS field types, aliases, coercion
+│   │   └── validators.py          # Required columns, status range, time_taken
+│   ├── filters/
+│   │   └── dynamic_only.py        # Keep only .aspx/.ashx
+│   ├── features/
+│   │   ├── layer1_agg.py          # 5-min window aggregation (counts, rates, latency, burstiness)
+│   │   ├── layer2_req.py          # Request-level (IP, UA, path/query hash, perf, status)
+│   │   ├── layer3_session.py      # Sessionization + sequence extraction
+│   │   └── joins.py               # Layer1 → Layer2 score join + hot-window gating
+│   ├── models/
+│   │   ├── layer1_baseline.py     # Rolling median + MAD robust z-score
+│   │   ├── layer2_iforest.py      # Per-segment Isolation Forest (parent/global fallback)
+│   │   ├── layer2_autoencoder.py  # Denoising AE → latent IF (Phase 2)
+│   │   ├── layer3_markov.py       # Markov rare-transition scorer
+│   │   ├── layer3_seqae.py        # Seq2Seq AE placeholder (Phase 3)
+│   │   └── registry.py            # MLflow model save/load/promote
+│   ├── scoring/
+│   │   ├── combine.py             # Weighted score fusion
+│   │   ├── threshold.py           # Segment-based quantile + EVT/POT
+│   │   ├── explain.py             # Reason code generation
+│   │   └── alerts.py              # Top-K alerts + critical endpoint quota
+│   ├── monitoring/
+│   │   ├── drift.py               # PSI, JSD, score shift, drift report
+│   │   └── metrics.py             # Prometheus counters/histograms/gauges
+│   └── api/
+│       ├── app.py                 # FastAPI (/score, /health, /metrics)
+│       └── schemas.py             # Pydantic request/response models
+├── tests/
+│   ├── test_parser.py
+│   ├── test_dynamic_filter.py
+│   ├── test_endpoint_group.py
+│   ├── test_layer1_agg.py
+│   ├── test_layer2_features.py
+│   ├── test_threshold.py
+│   └── test_api_score.py
+├── docker/
+│   ├── Dockerfile                 # Multi-stage build
+│   ├── docker-compose.yml         # API + MLflow + Prometheus
+│   └── prometheus.yml
+├── scripts/
+│   └── run_local_demo.sh
+└── examples/
+    ├── sample_config.yaml
+    └── sample_logs/
+        └── sample_iis.log
+```
+
+## Detection Layers
+
+| Layer | Purpose | Method | Trigger | Output |
+|-------|---------|--------|---------|--------|
+| **0** | Data quality + normalization | Parse, validate, filter | Always | Clean Parquet |
+| **1** | Window anomaly (5 min) | Rolling median + MAD z-score | Always (cheap) | `layer1_score`, `window_is_hot` |
+| **2** | Request-level outlier | Isolation Forest / AE+IF | Hot windows + critical EPs | `layer2_score` |
+| **3** | Session sequence (opt) | Markov transition | Critical EP sessions | `layer3_score` |
+| **4** | Calibration + alerting | Segment quantile/EVT | Threshold breach | Top-K alerts |
+
+## Configuration
+
+All parameters are configurable via `configs/default.yaml`. Key settings:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `layer1.window_size_minutes` | `5` | Aggregation window size |
+| `layer1.hot_threshold` | `0.8` | Layer 1 score to flag as hot |
+| `scoring.segment_quantile` | `0.995` | Per-segment threshold quantile |
+| `scoring.topk_daily` | `200` | Max daily non-critical alerts |
+| `scoring.topk_critical` | `50` | Separate quota for critical EPs |
+| `layer2.mode` | `iforest` | `iforest` or `ae_latent_if` |
+| `segmentation.min_segment_count` | `5000` | Fallback threshold |
+| `hashing.path_hash_dim` | `256` | Path token hash vector dim |
+| `hashing.query_hash_dim` | `128` | Query key hash vector dim |
+
+## API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check + model status |
+| `/score` | POST | Batch/single log scoring |
+| `/metrics` | GET | Prometheus metrics |
+
+### Score Request
+```json
+{
+  "records": [{
+    "uri_stem": "/EKAP/Default.aspx",
+    "method": "GET",
+    "status": 200,
+    "time_taken": 500,
+    "sc_bytes": 2048,
+    "client_ip": "10.0.0.1",
+    "user_agent": "Mozilla/5.0"
+  }]
+}
+```
+
+## Tuning Guide
+
+### Reducing False Positives
+- Increase `scoring.segment_quantile` (e.g. 0.999)
+- Reduce `scoring.topk_daily`
+- Increase `layer1.hot_threshold` (e.g. 0.9)
+
+### Increasing Sensitivity
+- Lower `scoring.segment_quantile` (e.g. 0.99)
+- Add more endpoints to `critical_endpoints`
+- Increase `scoring.topk_daily`
+- Enable EVT: `scoring.use_evt: true`
+
+### Switching to Phase 2 Model
+```yaml
+layer2:
+  mode: "ae_latent_if"
+  autoencoder:
+    latent_dim: 64
+    epochs: 100
+```
+
+## Runbook
+
+### Daily Operations
+1. Copy new IIS logs to `data/raw/`
+2. Run: `ekap-anom parse → filter-dynamic → featurize-layer1 → infer-layer1 → featurize-layer2 → infer-layer2 → score`
+3. Review alerts in `data/alerts/date=YYYY-MM-DD/alerts.jsonl`
+
+### Weekly Retrain
+1. Check drift report: `data/drift/drift_report.md`
+2. If retrain needed: `ekap-anom train-layer2 --mode iforest`
+3. Compare canary vs production metrics in MLflow
+
+### Incident Investigation
+1. Open `data/alerts/date=YYYY-MM-DD/alerts.parquet`
+2. Check `reason_codes` for dominant anomaly type
+3. Filter by `endpoint_group` for targeted analysis
+4. Correlate `context.request_count` and `context.5xx_rate` for scope assessment
+
+## License
+
+MIT

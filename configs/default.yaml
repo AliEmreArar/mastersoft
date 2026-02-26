@@ -1,0 +1,122 @@
+# ──────────────────────────────────────────────
+# EKAP Anomaly Detection – Default Configuration
+# ──────────────────────────────────────────────
+general:
+  project_name: "ekap-anom"
+  env: "dev"
+  log_level: "INFO"
+  log_format: "json"          # json | console
+  data_root: "./data"
+  model_root: "./models"
+
+ingest:
+  datetime_format: "%Y-%m-%d %H:%M:%S"
+  chunk_size: 100000           # rows per chunk
+  compression: "snappy"        # parquet compression
+
+filter:
+  dynamic_extensions:
+    - "aspx"
+    - "ashx"
+  optional_extensions:
+    - "asmx"
+    - "svc"
+  enable_optional: false
+
+segmentation:
+  enable_host: false           # EKAP = single host
+  enable_bot_flag: true
+  min_segment_count: 5000      # fallback if fewer observations
+
+url:
+  lowercase: true
+  strip_trailing_slash: true
+  numeric_template: true       # /123/ -> /{num}/
+  aggressive_template: false
+
+ua:
+  bot_patterns:
+    - "(?i)bot"
+    - "(?i)crawler"
+    - "(?i)spider"
+    - "(?i)slurp"
+    - "(?i)wget"
+    - "(?i)curl"
+    - "(?i)python-requests"
+    - "(?i)httpx"
+    - "(?i)scrapy"
+  novelty_window_days: 7
+
+hashing:
+  path_hash_dim: 256
+  query_hash_dim: 128
+
+layer1:
+  window_size_minutes: 5
+  step_minutes: 1
+  rolling_hours: 3            # for burstiness baseline
+  hot_threshold: 0.8          # layer1_score >= this -> hot
+  use_ewma: false
+  ewma_alpha: 0.3
+
+layer2:
+  mode: "iforest"             # iforest | ae_latent_if
+  iforest:
+    n_estimators: 200
+    max_samples: "auto"
+    contamination: 0.01
+    random_state: 42
+  autoencoder:
+    latent_dim: 32
+    hidden_dims: [128, 64]
+    dropout: 0.2
+    noise_factor: 0.1
+    learning_rate: 0.001
+    epochs: 50
+    batch_size: 512
+
+layer3:
+  enabled: false              # opsiyonel
+  session_timeout_minutes: 30
+  critical_endpoints:
+    - "/EKAP/Default.aspx"
+    - "/EKAP/Ortak/YeniIhaleAramaData.ashx"
+    - "/EKAP/Teklif/IhaleDokumanDownload.aspx"
+    - "/EKAP/Istekli/IstekliBilgileri.ashx"
+
+scoring:
+  weights:
+    layer1: 0.3
+    layer2: 0.5
+    layer3: 0.2
+  segment_quantile: 0.995
+  use_evt: false               # EVT/POT tail fitting
+  topk_daily: 200
+  topk_critical: 50
+
+critical_endpoints:
+  - "/EKAP/Default.aspx"
+  - "/EKAP/Ortak/YeniIhaleAramaData.ashx"
+  - "/EKAP/Teklif/IhaleDokumanDownload.aspx"
+  - "/EKAP/Istekli/IstekliBilgileri.ashx"
+
+privacy:
+  anonymize_ip: true
+  hash_cookie: true
+  redact_query_values: true
+
+drift:
+  psi_threshold: 0.2
+  jsd_threshold: 0.1
+  score_shift_threshold: 0.15
+  retrain_schedule: "weekly"
+
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "ekap-anomaly"
+  registry_name: "ekap-anom-models"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 2

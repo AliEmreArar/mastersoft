@@ -1,0 +1,33 @@
+# ──────────────────────────────────────────────
+# EKAP Anomaly Detection – Sample Configuration
+# ──────────────────────────────────────────────
+# Copy this file and adjust for your deployment.
+
+general:
+  project_name: "ekap-anom"
+  env: "dev"
+  log_level: "INFO"
+  data_root: "./data"
+  model_root: "./models"
+
+filter:
+  dynamic_extensions: ["aspx", "ashx"]
+  enable_optional: false
+
+layer1:
+  window_size_minutes: 5
+  hot_threshold: 0.8
+
+layer2:
+  mode: "iforest"
+
+scoring:
+  segment_quantile: 0.995
+  topk_daily: 200
+  topk_critical: 50
+
+critical_endpoints:
+  - "/EKAP/Default.aspx"
+  - "/EKAP/Ortak/YeniIhaleAramaData.ashx"
+  - "/EKAP/Teklif/IhaleDokumanDownload.aspx"
+  - "/EKAP/Istekli/IstekliBilgileri.ashx"

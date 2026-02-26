@@ -1,0 +1,2 @@
+[console_scripts]
+ekap-anom = ekap_anom.cli:cli

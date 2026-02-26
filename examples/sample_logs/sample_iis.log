@@ -1,0 +1,19 @@
+#Software: Microsoft Internet Information Services 10.0
+#Version: 1.0
+#Date: 2024-04-22 00:00:00
+#Fields: date time s-ip cs-method cs-uri-stem cs-uri-query s-port cs-username c-ip cs(User-Agent) cs(Referer) sc-status sc-substatus sc-win32-status time-taken sc-bytes cs-bytes
+2024-04-22 08:00:01 10.1.1.1 GET /EKAP/Default.aspx - 443 - 192.168.1.10 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36 - 200 0 0 156 12840 512
+2024-04-22 08:00:03 10.1.1.1 GET /EKAP/styles/main.css - 443 - 192.168.1.10 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36 - 200 0 0 12 8192 256
+2024-04-22 08:00:05 10.1.1.1 GET /EKAP/scripts/app.js - 443 - 192.168.1.10 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36 - 200 0 0 8 4096 128
+2024-04-22 08:00:10 10.1.1.1 GET /EKAP/images/logo.png - 443 - 192.168.1.10 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36 - 200 0 0 5 2048 64
+2024-04-22 08:01:15 10.1.1.1 POST /EKAP/Ortak/YeniIhaleAramaData.ashx SearchText=test&PageIndex=0 443 - 192.168.1.10 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36 /EKAP/Default.aspx 200 0 0 234 45678 1024
+2024-04-22 08:01:20 10.1.1.1 GET /EKAP/Teklif/IhaleDokumanDownload.aspx IhaleId=12345&DokumanId=6789 443 - 192.168.1.10 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36 - 200 0 0 1890 2048000 256
+2024-04-22 08:02:00 10.1.1.1 GET /EKAP/Istekli/IstekliBilgileri.ashx IstekliId=9876 443 - 192.168.1.10 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36 - 200 0 0 567 23456 512
+2024-04-22 08:02:30 10.1.1.1 GET /EKAP/Default.aspx - 443 - 10.20.30.40 Googlebot/2.1+(+http://www.google.com/bot.html) - 200 0 0 89 12840 256
+2024-04-22 08:03:00 10.1.1.1 GET /EKAP/Default.aspx - 443 - 10.20.30.41 python-requests/2.28.1 - 200 0 0 45 12840 128
+2024-04-22 08:03:10 10.1.1.1 POST /EKAP/Ortak/YeniIhaleAramaData.ashx SearchText=%3Cscript%3Ealert(1)%3C/script%3E&PageIndex=0 443 - 10.20.30.42 Mozilla/5.0 - 400 0 0 12 1024 2048
+2024-04-22 08:03:15 10.1.1.1 GET /EKAP/NonExistent.aspx - 443 - 10.20.30.43 Mozilla/5.0 - 404 0 0 5 512 128
+2024-04-22 08:04:00 10.1.1.1 POST /EKAP/Ortak/YeniIhaleAramaData.ashx SearchText=ihale&PageIndex=1 443 - 192.168.1.11 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64) /EKAP/Default.aspx 200 0 0 345 56789 1024
+2024-04-22 08:04:30 10.1.1.1 GET /EKAP/Teklif/IhaleDokumanDownload.aspx IhaleId=11111&DokumanId=2222 443 - 192.168.1.11 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64) - 200 0 0 2345 3072000 256
+2024-04-22 08:05:00 10.1.1.1 GET /EKAP/Default.aspx - 443 - 192.168.1.12 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64) - 500 0 64 15000 0 512
+2024-04-22 08:05:01 10.1.1.1 GET /EKAP/Default.aspx - 443 - 192.168.1.12 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64) - 500 0 64 14500 0 512
